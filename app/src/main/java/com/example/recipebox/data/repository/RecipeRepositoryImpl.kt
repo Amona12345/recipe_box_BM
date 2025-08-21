@@ -5,11 +5,12 @@ import com.example.recipebox.domain.model.Ingredient
 import com.example.recipebox.domain.model.Recipe
 import com.example.recipebox.domain.repository.RecipeRepo
 import kotlinx.coroutines.flow.Flow
+import javax.inject.Inject
 
 
-class RecipeRepositoryImpl(
+class RecipeRepositoryImpl @Inject constructor(
     private val recipeDao: RecipeDao
-) : RecipeRepo {
+)  : RecipeRepo {
     override suspend fun addRecipe(
         recipe: Recipe,
         ingredients: List<Ingredient>
