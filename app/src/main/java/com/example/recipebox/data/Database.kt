@@ -10,10 +10,13 @@ import com.example.recipebox.data.entities.Collection
 import com.example.recipebox.data.entities.CollectionRecipeCrossRef
 import com.example.recipebox.data.entities.Recipe
 
-@Database(entities = [Recipe::class, Collection::class, CollectionRecipeCrossRef::class], version = 1, exportSchema = true)
 @TypeConverters(Converters::class)
-abstract class Database: RoomDatabase(){
-    abstract fun recipesDao(): RecipeDao
+@Database(
+    entities = [Recipe::class, Collection::class, CollectionRecipeCrossRef::class],
+    version = 1,
+    exportSchema = false
+)
+abstract class RecipeBoxDatabase : RoomDatabase() {
+    abstract fun recipeDao(): RecipeDao
     abstract fun collectionDao(): CollectionDao
-
 }
