@@ -1,40 +1,22 @@
 package com.example.recipebox.data.entities
 
-import androidx.room.Embedded
 import androidx.room.Entity
-import androidx.room.Junction
-import androidx.room.Relation
+import androidx.room.ForeignKey
 
-@Entity(primaryKeys = ["collectionId", "recipeId"])
+@Entity(
+    tableName = "collection_recipe_cross_ref",
+    primaryKeys = ["collectionId", "recipeId"],
+    foreignKeys = [
+        ForeignKey(
+            entity = Collection::class,
+            parentColumns = ["id"],
+            childColumns = ["collectionId"]
+        ),
+        ForeignKey(entity = Recipe::class, parentColumns = ["id"], childColumns = ["recipeId"])
+    ]
+)
 data class CollectionRecipeCrossRef(
     val collectionId: Int,
     val recipeId: Int
 )
-data class CollectionWithRecipes(
-    @Embedded val collection: Collection,
-    @Relation(
-        parentColumn = "id",
-        entityColumn = "id",
-        associateBy = Junction(
-            value = CollectionRecipeCrossRef::class,
-            parentColumn = "collectionId",
-            entityColumn = "recipeId"
-        )
-    )
-    val recipes: List<Recipe>
-)
 
-
-data class RecipeWithCollections(
-    @Embedded val recipe: Recipe,
-    @Relation(
-        parentColumn = "id",
-        entityColumn = "id",
-        associateBy = Junction(
-            value = CollectionWithRecipes::class,
-            parentColumn = "recipeId",
-            entityColumn = "collectionId"
-        )
-    )
-    val collection: List<Collection>
-)

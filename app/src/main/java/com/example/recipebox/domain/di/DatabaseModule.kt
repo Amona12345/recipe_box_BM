@@ -4,7 +4,6 @@ import android.content.Context
 import androidx.room.Room
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
-import com.example.recipebox.data.Database
 import com.example.recipebox.data.dao.CollectionDao
 import com.example.recipebox.data.dao.RecipeDao
 import dagger.Module
@@ -14,34 +13,25 @@ import dagger.hilt.components.SingletonComponent
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Singleton
 import androidx.room.RoomDatabase
+import com.example.recipebox.data.RecipeBoxDatabase
 
 @Module
 @InstallIn(SingletonComponent::class)
 object DatabaseModule {
 
-    private val MIGRATION_1_2 = object : Migration(1, 2) {
-        override fun migrate(db: SupportSQLiteDatabase) {
-            db.execSQL(
-                "ALTER TABLE recipes ADD COLUMN "
-            )
-        }
-    }
-
     @Provides
     @Singleton
-    fun provideDatabase(@ApplicationContext appContext: Context): Database {
+    fun provideDatabase(@ApplicationContext context: Context): RecipeBoxDatabase {
         return Room.databaseBuilder(
-            appContext,
-            Database::class.java,
-            "recipebox_db"
-        )
-            .addMigrations(MIGRATION_1_2)
-            .build()
+            context,
+            RecipeBoxDatabase::class.java,
+            "recipebox_database"
+        ).build()
     }
 
     @Provides
-    fun provideRecipeDao(db: Database): RecipeDao = db.recipesDao()
+    fun provideRecipeDao(database: RecipeBoxDatabase): RecipeDao = database.recipeDao()
 
     @Provides
-    fun provideCollectionDao(db: Database): CollectionDao = db.collectionDao()
+    fun provideCollectionDao(database: RecipeBoxDatabase): CollectionDao = database.collectionDao()
 }

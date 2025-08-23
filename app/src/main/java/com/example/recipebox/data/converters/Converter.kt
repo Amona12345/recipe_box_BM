@@ -4,8 +4,12 @@ import androidx.room.TypeConverter
 
 class Converters {
     @TypeConverter
-    fun fromList(list: List<String>?): String = list?.joinToString("||") ?: ""
+    fun fromStringList(list: List<String>): String {
+        return list.joinToString("||")
+    }
 
     @TypeConverter
-    fun toList(csv: String?): List<String> = csv?.takeIf { it.isNotBlank() }?.split("||") ?: emptyList()
+    fun toStringList(data: String): List<String> {
+        return if (data.isBlank()) emptyList() else data.split("||")
+    }
 }

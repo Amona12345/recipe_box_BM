@@ -1,8 +1,7 @@
 package com.example.recipebox.domain.model
 
-data class Ingredient(
+data class CollectionModel(
     val id: Int = 0,
-    val recipeId: Int = 0,
     val name: String,
-    val quantity: String
+    val createdAt: Long = System.currentTimeMillis()
 )
