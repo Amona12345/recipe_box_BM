@@ -1,5 +1,7 @@
 package com.example.recipebox.presentation.viewmodel
 
+import android.net.Uri
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.recipebox.core.enums.DifficultyEnum
@@ -8,128 +10,114 @@ import com.example.recipebox.domain.model.IngredientModel
 import com.example.recipebox.domain.model.RecipeModel
 import com.example.recipebox.domain.model.mappers.formatIngredientString
 import com.example.recipebox.domain.model.mappers.parseIngredientString
+import com.example.recipebox.domain.repository.ImageRepository
+import com.example.recipebox.domain.usecase.recipe.ImageUseCases
 import com.example.recipebox.domain.usecase.recipe.RecipeUseCases
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.io.File
 import javax.inject.Inject
 
 @HiltViewModel
 class AddRecipeViewModel @Inject constructor(
-    private val recipeUseCases: RecipeUseCases
+    private val recipeUseCases: RecipeUseCases,
+    private val imageUseCases: ImageUseCases // Use ImageUseCases instead of direct repository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AddRecipeUiState())
     val uiState: StateFlow<AddRecipeUiState> = _uiState.asStateFlow()
 
+    fun nextStep() {
+        val currentStep = _uiState.value.currentStep
+        if (currentStep < 3) {
+            _uiState.value = _uiState.value.copy(currentStep = currentStep + 1)
+        }
+    }
+
+    fun previousStep() {
+        val currentStep = _uiState.value.currentStep
+        if (currentStep > 0) {
+            _uiState.value = _uiState.value.copy(currentStep = currentStep - 1)
+        }
+    }
+
+    fun goToStep(step: Int) {
+        if (step in 0..3) {
+            _uiState.value = _uiState.value.copy(currentStep = step)
+        }
+    }
+
     fun updateTitle(title: String) {
         _uiState.value = _uiState.value.copy(title = title)
     }
 
-    fun updateImageUri(uri: String?) {
-        _uiState.value = _uiState.value.copy(imageUri = uri)
+    fun updateDescription(description: String) {
+        _uiState.value = _uiState.value.copy(description = description)
     }
 
     fun updateServings(servings: Int) {
-        _uiState.value = _uiState.value.copy(servings = servings)
+        _uiState.value = _uiState.value.copy(servings = servings.coerceAtLeast(1))
     }
 
-    fun updateCookingTime(time: String) {
-        _uiState.value = _uiState.value.copy(cookingTime = time)
+    fun updatePrepTime(time: String) {
+        _uiState.value = _uiState.value.copy(prepTime = time)
+    }
+
+    fun updateCookTime(time: String) {
+        _uiState.value = _uiState.value.copy(cookTime = time)
     }
 
     fun updateDifficulty(difficulty: DifficultyEnum) {
         _uiState.value = _uiState.value.copy(difficulty = difficulty)
     }
 
-    fun updateDifficultyFromString(difficulty: String) {
-        val difficultyEnum = when (difficulty.lowercase()) {
-            "easy" -> DifficultyEnum.EASY
-            "medium" -> DifficultyEnum.MEDIUM
-            "hard" -> DifficultyEnum.HARD
-            else -> DifficultyEnum.EASY
-        }
-        _uiState.value = _uiState.value.copy(difficulty = difficultyEnum)
+    fun updateDishType(dishType: String) {
+        _uiState.value = _uiState.value.copy(dishType = dishType)
     }
 
-    fun addIngredient(ingredient: IngredientModel = IngredientModel("", "", "")) {
-        val currentIngredients = _uiState.value.ingredients.toMutableList()
-        currentIngredients.add(ingredient)
-        _uiState.value = _uiState.value.copy(ingredients = currentIngredients)
+    fun updateCuisine(cuisine: String) {
+        _uiState.value = _uiState.value.copy(cuisine = cuisine)
     }
 
-    fun removeIngredient(index: Int) {
-        val currentIngredients = _uiState.value.ingredients.toMutableList()
-        if (index in currentIngredients.indices && currentIngredients.size > 1) {
-            currentIngredients.removeAt(index)
-            _uiState.value = _uiState.value.copy(ingredients = currentIngredients)
-        }
+    fun updateCalories(calories: String) {
+        _uiState.value = _uiState.value.copy(calories = calories)
     }
 
-    fun updateIngredient(index: Int, ingredient: IngredientModel) {
-        val currentIngredients = _uiState.value.ingredients.toMutableList()
-        if (index in currentIngredients.indices) {
-            currentIngredients[index] = ingredient
-            _uiState.value = _uiState.value.copy(ingredients = currentIngredients)
-        }
+    fun showImagePickerDialog() {
+        _uiState.value = _uiState.value.copy(showImagePickerDialog = true)
     }
 
-    fun updateIngredientName(index: Int, name: String) {
-        val currentIngredients = _uiState.value.ingredients.toMutableList()
-        if (index in currentIngredients.indices) {
-            currentIngredients[index] = currentIngredients[index].copy(name = name)
-            _uiState.value = _uiState.value.copy(ingredients = currentIngredients)
+    fun hideImagePickerDialog() {
+        _uiState.value = _uiState.value.copy(showImagePickerDialog = false)
+    }
+
+
+
+
+
+    fun removeImage() {
+        viewModelScope.launch {
+            _uiState.value.localImagePath?.let { path ->
+                imageUseCases.deleteImage(path)
+            }
+            _uiState.value = _uiState.value.copy(
+                imageUri = null,
+                localImagePath = null
+            )
         }
     }
 
-    fun updateIngredientAmount(index: Int, amount: String) {
-        val currentIngredients = _uiState.value.ingredients.toMutableList()
-        if (index in currentIngredients.indices) {
-            currentIngredients[index] = currentIngredients[index].copy(amount = amount)
-            _uiState.value = _uiState.value.copy(ingredients = currentIngredients)
+    fun toggleDietaryTag(tag: String) {
+        val currentTags = _uiState.value.dietaryTags.toMutableList()
+        if (currentTags.contains(tag)) {
+            currentTags.remove(tag)
+        } else {
+            currentTags.add(tag)
         }
-    }
-
-    fun updateIngredientUnit(index: Int, unit: String) {
-        val currentIngredients = _uiState.value.ingredients.toMutableList()
-        if (index in currentIngredients.indices) {
-            currentIngredients[index] = currentIngredients[index].copy(unit = unit)
-            _uiState.value = _uiState.value.copy(ingredients = currentIngredients)
-        }
-    }
-
-    fun addIngredientFromString(ingredientString: String) {
-        val ingredient = parseIngredientString(ingredientString)
-        addIngredient(ingredient)
-    }
-
-    fun updateIngredientFromString(index: Int, ingredientString: String) {
-        val ingredient = parseIngredientString(ingredientString)
-        updateIngredient(index, ingredient)
-    }
-
-    fun addStep(step: String = "") {
-        val currentSteps = _uiState.value.steps.toMutableList()
-        currentSteps.add(step)
-        _uiState.value = _uiState.value.copy(steps = currentSteps)
-    }
-
-    fun removeStep(index: Int) {
-        val currentSteps = _uiState.value.steps.toMutableList()
-        if (index in currentSteps.indices && currentSteps.size > 1) {
-            currentSteps.removeAt(index)
-            _uiState.value = _uiState.value.copy(steps = currentSteps)
-        }
-    }
-
-    fun updateStep(index: Int, step: String) {
-        val currentSteps = _uiState.value.steps.toMutableList()
-        if (index in currentSteps.indices) {
-            currentSteps[index] = step
-            _uiState.value = _uiState.value.copy(steps = currentSteps)
-        }
+        _uiState.value = _uiState.value.copy(dietaryTags = currentTags)
     }
 
     fun addTag(tag: String) {
@@ -149,42 +137,61 @@ class AddRecipeViewModel @Inject constructor(
         _uiState.value = _uiState.value.copy(tags = currentTags)
     }
 
-    fun removeTagAt(index: Int) {
-        val currentTags = _uiState.value.tags.toMutableList()
-        if (index in currentTags.indices) {
-            currentTags.removeAt(index)
-            _uiState.value = _uiState.value.copy(tags = currentTags)
+    fun addIngredient() {
+        val currentIngredients = _uiState.value.ingredients.toMutableList()
+        currentIngredients.add(IngredientModel("", "", "", ""))
+        _uiState.value = _uiState.value.copy(ingredients = currentIngredients)
+    }
+
+    fun removeIngredient(index: Int) {
+        val currentIngredients = _uiState.value.ingredients.toMutableList()
+        if (index in currentIngredients.indices && currentIngredients.size > 1) {
+            currentIngredients.removeAt(index)
+            _uiState.value = _uiState.value.copy(ingredients = currentIngredients)
         }
     }
 
-    fun isFormValid(): Boolean {
-        val state = _uiState.value
-        return state.title.isNotBlank() &&
-                state.ingredients.any { it.name.isNotBlank() } &&
-                state.steps.any { it.isNotBlank() }
+    fun updateIngredient(index: Int, name: String, amount: String, unit: String, notes: String = "") {
+        val currentIngredients = _uiState.value.ingredients.toMutableList()
+        if (index in currentIngredients.indices) {
+            currentIngredients[index] = IngredientModel(name, amount, unit, notes)
+            _uiState.value = _uiState.value.copy(ingredients = currentIngredients)
+        }
     }
 
-    fun getValidationErrors(): List<String> {
-        val errors = mutableListOf<String>()
-        val state = _uiState.value
+    fun addStep() {
+        val currentSteps = _uiState.value.steps.toMutableList()
+        currentSteps.add("")
+        _uiState.value = _uiState.value.copy(steps = currentSteps)
+    }
 
-        if (state.title.isBlank()) {
-            errors.add("Recipe title is required")
+    fun removeStep(index: Int) {
+        val currentSteps = _uiState.value.steps.toMutableList()
+        if (index in currentSteps.indices && currentSteps.size > 1) {
+            currentSteps.removeAt(index)
+            _uiState.value = _uiState.value.copy(steps = currentSteps)
         }
+    }
 
-        if (state.ingredients.none { it.name.isNotBlank() }) {
-            errors.add("At least one ingredient is required")
+    fun updateStep(index: Int, step: String) {
+        val currentSteps = _uiState.value.steps.toMutableList()
+        if (index in currentSteps.indices) {
+            currentSteps[index] = step
+            _uiState.value = _uiState.value.copy(steps = currentSteps)
         }
+    }
 
-        if (state.steps.none { it.isNotBlank() }) {
-            errors.add("At least one cooking step is required")
+    fun isStepValid(step: Int): Boolean {
+        return when (step) {
+            0 -> _uiState.value.title.isNotBlank()
+            1 -> _uiState.value.ingredients.any { it.name.isNotBlank() }
+            2 -> _uiState.value.steps.any { it.isNotBlank() }
+            else -> true
         }
+    }
 
-        if (state.servings <= 0) {
-            errors.add("Servings must be greater than 0")
-        }
-
-        return errors
+    fun canProceedToNext(): Boolean {
+        return isStepValid(_uiState.value.currentStep)
     }
 
     fun saveRecipe() {
@@ -192,23 +199,24 @@ class AddRecipeViewModel @Inject constructor(
             try {
                 _uiState.value = _uiState.value.copy(isLoading = true)
 
-                if (!isFormValid()) {
-                    _uiState.value = _uiState.value.copy(
-                        isLoading = false,
-                        errorMessage = "Please fill in all required fields"
-                    )
-                    return@launch
-                }
-
+                val currentState = _uiState.value
                 val recipe = RecipeModel(
-                    title = _uiState.value.title.trim(),
-                    imageUri = _uiState.value.imageUri,
-                    ingredients = _uiState.value.ingredients.filter { it.name.isNotBlank() },
-                    steps = _uiState.value.steps.filter { it.isNotBlank() },
-                    tags = _uiState.value.tags,
-                    servings = _uiState.value.servings,
-                    cookingTime = _uiState.value.cookingTime.trim(),
-                    difficulty = _uiState.value.difficulty
+                    title = currentState.title.trim(),
+                    description = currentState.description.trim(),
+                    imageUri = currentState.imageUri,
+                    localImagePath = currentState.localImagePath,
+                    ingredients = currentState.ingredients.filter { it.name.isNotBlank() },
+                    steps = currentState.steps.filter { it.isNotBlank() },
+                    tags = currentState.tags,
+                    servings = currentState.servings,
+                    prepTime = currentState.prepTime.trim(),
+                    cookTime = currentState.cookTime.trim(),
+                    totalTime = calculateTotalTime(currentState.prepTime, currentState.cookTime),
+                    difficulty = currentState.difficulty,
+                    dishType = currentState.dishType,
+                    dietaryTags = currentState.dietaryTags,
+                    cuisine = currentState.cuisine,
+                    calories = currentState.calories.toIntOrNull()
                 )
 
                 recipeUseCases.addRecipe(recipe)
@@ -225,41 +233,117 @@ class AddRecipeViewModel @Inject constructor(
         }
     }
 
+    private fun calculateTotalTime(prepTime: String, cookTime: String): String {
+        return when {
+            prepTime.isBlank() && cookTime.isBlank() -> ""
+            prepTime.isBlank() -> cookTime
+            cookTime.isBlank() -> prepTime
+            else -> {
+                val prepMinutes = extractMinutes(prepTime)
+                val cookMinutes = extractMinutes(cookTime)
+                val totalMinutes = prepMinutes + cookMinutes
+
+                when {
+                    totalMinutes >= 60 -> "${totalMinutes / 60}h ${totalMinutes % 60}min"
+                    else -> "${totalMinutes}min"
+                }
+            }
+        }
+    }
+
+    private fun extractMinutes(timeString: String): Int {
+        return try {
+            val numbers = timeString.filter { it.isDigit() || it == '.' }
+            if (numbers.isNotBlank()) {
+                val value = numbers.toDouble()
+                when {
+                    timeString.contains("hour", ignoreCase = true) || timeString.contains("h", ignoreCase = true) -> (value * 60).toInt()
+                    else -> value.toInt()
+                }
+            } else 0
+        } catch (e: Exception) {
+            0
+        }
+    }
+
     fun clearError() {
         _uiState.value = _uiState.value.copy(errorMessage = null)
     }
 
     fun resetForm() {
+        _uiState.value.localImagePath?.let { path ->
+            viewModelScope.launch {
+                imageUseCases.deleteImage(path)
+            }
+        }
         _uiState.value = AddRecipeUiState()
     }
 
-    fun resetSavedState() {
-        _uiState.value = _uiState.value.copy(isSaved = false)
+
+    fun showError(message: String) {
+        _uiState.value = _uiState.value.copy(errorMessage = message)
     }
 
-    fun getDifficultyOptions(): List<DifficultyEnum> {
-        return DifficultyEnum.entries
-    }
+// 5. Updated image handling methods in ViewModel:
 
-    fun getDifficultyDisplayName(difficulty: DifficultyEnum): String {
-        return when (difficulty) {
-            DifficultyEnum.EASY -> "Easy"
-            DifficultyEnum.MEDIUM -> "Medium"
-            DifficultyEnum.HARD -> "Hard"
+    fun updateImageFromCamera(uri: Uri) {
+        viewModelScope.launch {
+            try {
+                // Check if file exists
+                val file = File(uri.path ?: "")
+                if (!file.exists()) {
+                    _uiState.value = _uiState.value.copy(
+                        errorMessage = "Image file was not created by camera"
+                    )
+                    return@launch
+                }
+
+                val savedPath = imageUseCases.saveImageToInternalStorage(uri)
+                _uiState.value = _uiState.value.copy(
+                    imageUri = uri.toString(),
+                    localImagePath = savedPath,
+                    showImagePickerDialog = false
+                )
+            } catch (e: Exception) {
+                Log.e("CameraError", "Failed to save image from camera", e)
+                _uiState.value = _uiState.value.copy(
+                    errorMessage = "Failed to save image: ${e.message}",
+                    showImagePickerDialog = false
+                )
+            }
         }
     }
 
-    fun canRemoveIngredient(): Boolean {
-        return _uiState.value.ingredients.size > 1
+    fun updateImageFromGallery(uri: Uri) {
+        viewModelScope.launch {
+            try {
+                val savedPath = imageUseCases.saveImageToInternalStorage(uri)
+                _uiState.value = _uiState.value.copy(
+                    imageUri = uri.toString(),
+                    localImagePath = savedPath,
+                    showImagePickerDialog = false
+                )
+            } catch (e: Exception) {
+                Log.e("GalleryError", "Failed to save image from gallery", e)
+                _uiState.value = _uiState.value.copy(
+                    errorMessage = "Failed to save image: ${e.message}",
+                    showImagePickerDialog = false
+                )
+            }
+        }
     }
 
-    fun canRemoveStep(): Boolean {
-        return _uiState.value.steps.size > 1
-    }
 
-    fun getIngredientDisplayText(ingredient: IngredientModel): String {
-        return formatIngredientString(ingredient)
-    }
 
+    override fun onCleared() {
+        super.onCleared()
+        if (!_uiState.value.isSaved) {
+            _uiState.value.localImagePath?.let { path ->
+                viewModelScope.launch {
+                    imageUseCases.deleteImage(path)
+                }
+            }
+        }
+    }
 
 }

@@ -1,6 +1,7 @@
 package com.example.recipebox.domain.di
 
 import com.example.recipebox.domain.repository.CollectionRepository
+import com.example.recipebox.domain.repository.ImageRepository
 import com.example.recipebox.domain.repository.RecipeRepository
 import com.example.recipebox.domain.usecase.recipe.AddRecipeUseCase
 import com.example.recipebox.domain.usecase.recipe.DeleteRecipeUseCase
@@ -17,6 +18,10 @@ import com.example.recipebox.domain.usecase.collection.GetCollectionsUseCase
 import com.example.recipebox.domain.usecase.collection.GetCollectionsWithRecipesUseCase
 import com.example.recipebox.domain.usecase.collection.RemoveRecipeFromCollectionUseCase
 import com.example.recipebox.domain.usecase.collection.UpdateCollectionUseCase
+import com.example.recipebox.domain.usecase.recipe.DeleteImageUseCase
+import com.example.recipebox.domain.usecase.recipe.GetImageUriUseCase
+import com.example.recipebox.domain.usecase.recipe.ImageUseCases
+import com.example.recipebox.domain.usecase.recipe.SaveImageToInternalStorageUseCase
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -27,7 +32,6 @@ import javax.inject.Singleton
 @Module
 @InstallIn(SingletonComponent::class)
 object UseCaseModule {
-
 
     @Provides
     @Singleton
@@ -55,4 +59,15 @@ object UseCaseModule {
             updateCollection = UpdateCollectionUseCase(repository)
         )
     }
+
+    @Provides
+    @Singleton
+    fun provideImageUseCases(repository: ImageRepository): ImageUseCases {
+        return ImageUseCases(
+            saveImageToInternalStorage = SaveImageToInternalStorageUseCase(repository),
+            deleteImage = DeleteImageUseCase(repository),
+            getImageUri = GetImageUriUseCase(repository)
+        )
+    }
 }
+

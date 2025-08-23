@@ -8,20 +8,23 @@ fun Recipe.toDomain(): RecipeModel {
     return RecipeModel(
         id = id,
         title = title,
+        description = description,
         imageUri = imageUri,
+        localImagePath = localImagePath,
         tags = tags,
-        ingredients = ingredients.map { ingredientString ->
-            parseIngredientString(ingredientString)
-        },
+        ingredients = ingredients.map { parseIngredientString(it) },
         steps = steps,
         servings = servings,
-        cookingTime = cookingTime,
-        difficulty = when (difficulty.lowercase()) {
-            "easy" -> DifficultyEnum.EASY
-            "medium" -> DifficultyEnum.MEDIUM
-            "hard" -> DifficultyEnum.HARD
-            else -> DifficultyEnum.EASY
-        }
+        prepTime = prepTime,
+        cookTime = cookTime,
+        totalTime = totalTime,
+        difficulty = difficulty, // Direct assignment - all properties preserved
+        dishType = dishType,
+        dietaryTags = dietaryTags,
+        cuisine = cuisine,
+        calories = calories,
+        createdAt = createdAt,
+        updatedAt = updatedAt
     )
 }
 
@@ -29,14 +32,22 @@ fun RecipeModel.toData(): Recipe {
     return Recipe(
         id = id,
         title = title,
+        description = description,
         imageUri = imageUri,
+        localImagePath = localImagePath,
         tags = tags,
-        ingredients = ingredients.map { ingredient ->
-            formatIngredientString(ingredient)
-        },
+        ingredients = ingredients.map { formatIngredientString(it) },
         steps = steps,
         servings = servings,
-        cookingTime = cookingTime,
-        difficulty = difficulty.name.lowercase()
+        prepTime = prepTime,
+        cookTime = cookTime,
+        totalTime = totalTime,
+        difficulty = difficulty, // Direct assignment - all properties preserved
+        dishType = dishType,
+        dietaryTags = dietaryTags,
+        cuisine = cuisine,
+        calories = calories,
+        createdAt = createdAt,
+        updatedAt = System.currentTimeMillis()
     )
 }
