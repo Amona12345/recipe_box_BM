@@ -62,12 +62,17 @@ dependencies {
     ///Hilt
     implementation("com.google.dagger:hilt-android:2.51.1")
     ksp("com.google.dagger:hilt-android-compiler:2.51.1")
-
+    implementation(libs.androidx.hilt.navigation.compose)
     //Room
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     implementation(libs.androidx.room.external.antlr)
     ksp(libs.androidx.room.compiler)
+    //Lucide
+    implementation("br.com.devsrsouza.compose.icons:eva-icons:1.1.0")
+    implementation("br.com.devsrsouza.compose.icons:feather:1.1.0")
+    implementation("com.airbnb.android:lottie-compose:6.1.0")
+    implementation("io.coil-kt:coil-compose:2.6.0")
 
 
 }

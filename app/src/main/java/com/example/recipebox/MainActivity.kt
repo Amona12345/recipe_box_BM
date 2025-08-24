@@ -7,10 +7,8 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
+import com.example.recipebox.presentation.screens.AddRecipeScreen
 import com.example.recipebox.ui.theme.RecipeBoxTheme
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -20,9 +18,17 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-
+            RecipeBoxTheme {
+                // A surface container using the 'background' color from the theme
+                Scaffold(
+                    modifier = Modifier.fillMaxSize()
+                ) { paddingValues ->
+                    AddRecipeScreen (modifier = Modifier.padding(paddingValues), onNavigateBack = { finish() } )
+                }
+            }
         }
     }
+
 }
 
 
