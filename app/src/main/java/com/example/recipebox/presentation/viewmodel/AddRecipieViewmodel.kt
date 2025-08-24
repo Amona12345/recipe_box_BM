@@ -11,6 +11,7 @@ import com.example.recipebox.domain.model.RecipeModel
 import com.example.recipebox.domain.model.mappers.formatIngredientString
 import com.example.recipebox.domain.model.mappers.parseIngredientString
 import com.example.recipebox.domain.repository.ImageRepository
+import com.example.recipebox.domain.usecase.collection.CollectionUseCases
 import com.example.recipebox.domain.usecase.recipe.ImageUseCases
 import com.example.recipebox.domain.usecase.recipe.RecipeUseCases
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -24,7 +25,8 @@ import javax.inject.Inject
 @HiltViewModel
 class AddRecipeViewModel @Inject constructor(
     private val recipeUseCases: RecipeUseCases,
-    private val imageUseCases: ImageUseCases // Use ImageUseCases instead of direct repository
+    private val imageUseCases: ImageUseCases,
+    private val collectionUseCases: CollectionUseCases // Add this dependency
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AddRecipeUiState())
@@ -59,7 +61,7 @@ class AddRecipeViewModel @Inject constructor(
     }
 
     fun updateServings(servings: Int) {
-        _uiState.value = _uiState.value.copy(servings = servings.coerceAtLeast(1))
+        _uiState.value = _uiState.value.copy(servings = servings)
     }
 
     fun updatePrepTime(time: String) {
@@ -193,7 +195,9 @@ class AddRecipeViewModel @Inject constructor(
     fun canProceedToNext(): Boolean {
         return isStepValid(_uiState.value.currentStep)
     }
-
+    fun setTargetCollectionId(collectionId: Int) {
+        _uiState.value = _uiState.value.copy(targetCollectionId = collectionId)
+    }
     fun saveRecipe() {
         viewModelScope.launch {
             try {
@@ -219,7 +223,16 @@ class AddRecipeViewModel @Inject constructor(
                     calories = currentState.calories.toIntOrNull()
                 )
 
-                recipeUseCases.addRecipe(recipe)
+                val recipeId = recipeUseCases.addRecipe(recipe)
+
+                currentState.targetCollectionId?.let { collectionId ->
+                    try {
+                        collectionUseCases.addRecipeToCollection(collectionId, recipeId.toInt())
+                    } catch (e: Exception) {
+                        Log.e("AddRecipeViewModel", "Failed to add recipe to collection: ${e.message}")
+                    }
+                }
+
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     isSaved = true
@@ -284,7 +297,6 @@ class AddRecipeViewModel @Inject constructor(
         _uiState.value = _uiState.value.copy(errorMessage = message)
     }
 
-// 5. Updated image handling methods in ViewModel:
 
     fun updateImageFromCamera(uri: Uri) {
         viewModelScope.launch {
@@ -345,5 +357,7 @@ class AddRecipeViewModel @Inject constructor(
             }
         }
     }
-
+    fun clearTargetCollection() {
+        _uiState.value = _uiState.value.copy(targetCollectionId = null)
+    }
 }

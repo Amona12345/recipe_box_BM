@@ -13,7 +13,7 @@ import com.example.recipebox.data.entities.Recipe
 @TypeConverters(Converters::class)
 @Database(
     entities = [Recipe::class, Collection::class, CollectionRecipeCrossRef::class],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 abstract class RecipeBoxDatabase : RoomDatabase() {

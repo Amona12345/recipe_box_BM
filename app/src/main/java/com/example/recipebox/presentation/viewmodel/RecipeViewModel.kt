@@ -13,8 +13,11 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -34,20 +37,86 @@ class RecipeViewModel @Inject constructor(
     private val _selectedTags = MutableStateFlow<List<String>>(emptyList())
     val selectedTags: StateFlow<List<String>> = _selectedTags.asStateFlow()
 
-    @OptIn(ExperimentalCoroutinesApi::class)
+    val allRecipes: StateFlow<List<RecipeModel>> = recipeUseCases.getRecipes()
+        .onStart {
+            _uiState.value = _uiState.value.copy(isLoading = true)
+        }
+        .catch { exception ->
+            _uiState.value = _uiState.value.copy(
+                isLoading = false,
+                errorMessage = "Failed to load recipes: ${exception.message}"
+            )
+            emit(emptyList())
+        }
+        .onEach {
+            _uiState.value = _uiState.value.copy(isLoading = false)
+        }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyList()
+        )
+
     val recipes: StateFlow<List<RecipeModel>> = combine(
+        allRecipes,
         _searchQuery,
         _selectedTags
-    ) { query, tags ->
-        recipeUseCases.searchRecipes(
-            query = query.takeIf { it.isNotBlank() },
-            tags = tags.takeIf { it.isNotEmpty() }
-        )
-    }.flatMapLatest { it }
-        .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+    ) { allRecipes, query, tags ->
+        var filteredRecipes = allRecipes
 
-    val collections: StateFlow<List<CollectionModel>> = collectionUseCases.getCollections()
-        .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+        if (query.isNotBlank()) {
+            filteredRecipes = filteredRecipes.filter { recipe ->
+                val titleMatch = recipe.title.contains(query, ignoreCase = true)
+                val descriptionMatch = recipe.description.contains(query, ignoreCase = true)
+
+                val ingredientMatch = try {
+                    when (val ingredients = recipe.ingredients) {
+                        else -> ingredients.any { it.toString().contains(query, ignoreCase = true) }
+                    }
+                } catch (e: Exception) {
+                    false
+                }
+
+                val stepsMatch = try {
+                    when (val steps = recipe.steps) {
+                        else -> steps.any { it.toString().contains(query, ignoreCase = true) }
+                    }
+                } catch (e: Exception) {
+                    false
+                }
+
+                titleMatch || descriptionMatch || ingredientMatch || stepsMatch
+            }
+        }
+        if (tags.isNotEmpty()) {
+            filteredRecipes = filteredRecipes.filter { recipe ->
+                val allRecipeTags = recipe.tags + recipe.dietaryTags
+                tags.any { selectedTag ->
+                    allRecipeTags.any { recipeTag ->
+                        recipeTag.equals(selectedTag, ignoreCase = true)
+                    }
+                }
+            }
+        }
+
+        filteredRecipes
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = emptyList()
+    )
+
+    init {
+        _uiState.value = _uiState.value.copy(isLoading = true)
+
+        viewModelScope.launch {
+            allRecipes.collect { recipes ->
+                if (_uiState.value.isLoading) {
+                    _uiState.value = _uiState.value.copy(isLoading = false)
+                }
+            }
+        }
+    }
 
     fun onSearchQueryChange(query: String) {
         _searchQuery.value = query
@@ -73,11 +142,17 @@ class RecipeViewModel @Inject constructor(
             try {
                 _uiState.value = _uiState.value.copy(isLoading = true)
                 recipeUseCases.addRecipe(recipe)
-                _uiState.value = _uiState.value.copy(isLoading = false)
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    successMessage = "Recipe added successfully"
+                )
+                // Auto-clear success message
+                kotlinx.coroutines.delay(3000)
+                _uiState.value = _uiState.value.copy(successMessage = null)
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    errorMessage = e.message
+                    errorMessage = e.message ?: "Failed to add recipe"
                 )
             }
         }
@@ -88,11 +163,17 @@ class RecipeViewModel @Inject constructor(
             try {
                 _uiState.value = _uiState.value.copy(isLoading = true)
                 recipeUseCases.updateRecipe(recipe)
-                _uiState.value = _uiState.value.copy(isLoading = false)
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    successMessage = "Recipe updated successfully"
+                )
+                // Auto-clear success message
+                kotlinx.coroutines.delay(3000)
+                _uiState.value = _uiState.value.copy(successMessage = null)
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    errorMessage = e.message
+                    errorMessage = e.message ?: "Failed to update recipe"
                 )
             }
         }
@@ -101,40 +182,44 @@ class RecipeViewModel @Inject constructor(
     fun deleteRecipe(recipe: RecipeModel) {
         viewModelScope.launch {
             try {
+                _uiState.value = _uiState.value.copy(isLoading = true)
                 recipeUseCases.deleteRecipe(recipe)
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    successMessage = "Recipe deleted successfully"
+                )
+                // Auto-clear success message
+                kotlinx.coroutines.delay(3000)
+                _uiState.value = _uiState.value.copy(successMessage = null)
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(errorMessage = e.message)
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    errorMessage = e.message ?: "Failed to delete recipe"
+                )
             }
         }
     }
 
-    fun getRecipeById(id: Int, callback: (RecipeModel?) -> Unit) {
-        viewModelScope.launch {
-            try {
-                val recipe = recipeUseCases.getRecipeById(id)
-                callback(recipe)
-            } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(errorMessage = e.message)
-                callback(null)
-            }
-        }
-    }
-
-    fun addRecipeToCollection(recipeId: Int, collectionId: Int) {
-        viewModelScope.launch {
-            try {
-                collectionUseCases.addRecipeToCollection(collectionId, recipeId)
-            } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(errorMessage = e.message)
-            }
+    suspend fun getRecipeById(id: Int): RecipeModel? {
+        return try {
+            recipeUseCases.getRecipeById(id)
+        } catch (e: Exception) {
+            _uiState.value = _uiState.value.copy(
+                errorMessage = "Failed to load recipe: ${e.message}"
+            )
+            null
         }
     }
 
     fun getAllAvailableTags(): List<String> {
-        return recipes.value.flatMap { it.tags }.distinct().sorted()
+        return allRecipes.value.flatMap { it.tags + it.dietaryTags }.distinct().sorted()
     }
 
     fun clearError() {
         _uiState.value = _uiState.value.copy(errorMessage = null)
+    }
+
+    fun clearSuccess() {
+        _uiState.value = _uiState.value.copy(successMessage = null)
     }
 }

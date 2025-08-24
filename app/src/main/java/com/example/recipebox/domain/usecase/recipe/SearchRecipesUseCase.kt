@@ -5,7 +5,9 @@ import com.example.recipebox.domain.model.RecipeModel
 import com.example.recipebox.domain.repository.RecipeRepository
 import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
+import javax.inject.Singleton
 
+@Singleton
 class SearchRecipesUseCase @Inject constructor(
     private val repository: RecipeRepository
 ) {

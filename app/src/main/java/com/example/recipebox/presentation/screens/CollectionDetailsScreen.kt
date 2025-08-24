@@ -1,34 +1,37 @@
 package com.example.recipebox.presentation.screens
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.List
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.recipebox.presentation.items.home.AllRecipesContent
 import com.example.recipebox.presentation.viewmodel.CollectionViewModel
+import compose.icons.FeatherIcons
+import compose.icons.feathericons.Grid
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun CollectionDetailsScreen(
     collectionId: Int,
     onBackClick: () -> Unit,
+    onAddRecipeToCollection: (Int) -> Unit = {},
     viewModel: CollectionViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val collectionsWithRecipes by viewModel.collectionsWithRecipes.collectAsState()
+    var useGridView by remember { mutableStateOf(true) }
 
     val collection = collectionsWithRecipes.find { it.collection.id == collectionId }
 
@@ -40,131 +43,164 @@ fun CollectionDetailsScreen(
                 title = {
                     Text(
                         text = collection?.collection?.name ?: "Collection",
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
                     )
                 },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(
                             imageVector = Icons.Default.ArrowBack,
-                            contentDescription = "Back",
-                            tint = Color.White
+                            contentDescription = "Back"
                         )
                     }
                 },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = Color(0xFF4CAF50)
-                )
-            )
-        },
-        containerColor = Color(0xFFF8F8F8)
-    ) { paddingValues ->
-        Box(modifier = Modifier.fillMaxSize()) {
-            collection?.let { col ->
-                if (col.recipes.isEmpty()) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(paddingValues),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "No recipes in this collection",
-                            fontSize = 16.sp,
-                            color = Color.Gray
+                actions = {
+                    IconButton(onClick = { useGridView = !useGridView }) {
+                        Icon(
+                            imageVector = if (useGridView) Icons.Default.List else FeatherIcons.Grid,
+                            contentDescription = if (useGridView) "List View" else "Grid View"
                         )
                     }
-                } else {
-                    LazyColumn(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(paddingValues)
-                            .padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        items(col.recipes) { recipe ->
-                            Card(
-                                modifier = Modifier.fillMaxWidth(),
-                                colors = CardDefaults.cardColors(containerColor = Color.White),
-                                elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
-                                shape = MaterialTheme.shapes.medium
-                            ) {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(16.dp),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Column {
-                                        Text(
-                                            text = recipe.title,
-                                            fontSize = 18.sp,
-                                            fontWeight = FontWeight.SemiBold,
-                                            color = Color(0xFF333333)
-                                        )
+                    IconButton(onClick = { onAddRecipeToCollection(collectionId) }) {
+                        Icon(
+                            Icons.Default.Add,
+                            contentDescription = "Add Recipe"
+                        )
+                    }
+                }
+            )
+        },
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = { onAddRecipeToCollection(collectionId) },
+                containerColor = MaterialTheme.colorScheme.primary
+            ) {
+                Icon(Icons.Default.Add, contentDescription = "Add Recipe", tint = Color.White)
+            }
+        }
+    ) { paddingValues ->
+        Box(modifier = Modifier.fillMaxSize()) {
 
-                                    }
-                                    IconButton(
-                                        onClick = { showDeleteDialog = recipe.id }
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.Delete,
-                                            contentDescription = "Remove Recipe",
-                                            tint = Color.Red
-                                        )
-                                    }
-                                }
+            if (uiState.isLoading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.align(Alignment.Center)
+                )
+            }
+
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .padding(16.dp)
+            ) {
+                when {
+                    collection == null -> {
+                        Text(
+                            text = "Collection not found",
+                            style = MaterialTheme.typography.headlineSmall,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.align(Alignment.CenterHorizontally)
+                        )
+                    }
+
+                    collection.recipes.isEmpty() && !uiState.isLoading -> {
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = "No recipes in this collection yet",
+                                style = MaterialTheme.typography.headlineSmall,
+                                textAlign = TextAlign.Center
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "Add your first recipe to get started!",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Button(
+                                onClick = { onAddRecipeToCollection(collectionId) },
+                                enabled = !uiState.isLoading
+                            ) {
+                                Text("Add Recipe")
                             }
                         }
+                    }
+
+                    else -> {
+                        AllRecipesContent(
+                            recipes = collection.recipes,
+                            onRecipeClick = { /* Could implement viewing recipe details */ },
+                            useGridView = useGridView
+                        )
                     }
                 }
             }
 
-            // Animated Error Message
-            AnimatedVisibility(
-                visible = uiState.errorMessage != null,
-                enter = fadeIn(),
-                exit = fadeOut(),
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(16.dp)
-            ) {
+            uiState.successMessage?.let { successMessage ->
+                LaunchedEffect(successMessage) {
+                    kotlinx.coroutines.delay(3000)
+                    viewModel.clearSuccess()
+                }
+
                 Snackbar(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(16.dp),
+                    action = {
+                        TextButton(onClick = { viewModel.clearSuccess() }) {
+                            Text("OK")
+                        }
+                    }
+                ) {
+                    Text(successMessage)
+                }
+            }
+
+            uiState.errorMessage?.let { errorMessage ->
+                Snackbar(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(16.dp),
                     action = {
                         TextButton(onClick = { viewModel.clearError() }) {
-                            Text("Dismiss", color = Color.White)
+                            Text("Dismiss")
                         }
-                    },
-                    containerColor = Color.Red
+                    }
                 ) {
-                    Text(uiState.errorMessage ?: "", color = Color.White)
+                    Text(errorMessage)
                 }
             }
         }
 
-        // Delete Confirmation Dialog
-        if (showDeleteDialog != null) {
+        showDeleteDialog?.let { recipeId ->
+            val recipeToDelete = collection?.recipes?.find { it.id == recipeId }
             AlertDialog(
                 onDismissRequest = { showDeleteDialog = null },
-                title = { Text("Delete Recipe") },
-                text = { Text("Are you sure you want to remove this recipe from the collection?") },
+                title = { Text("Remove Recipe") },
+                text = {
+                    Text("Are you sure you want to remove \"${recipeToDelete?.title ?: "this recipe"}\" from the collection?")
+                },
                 confirmButton = {
                     TextButton(
                         onClick = {
-                            showDeleteDialog?.let { recipeId ->
-                                viewModel.removeRecipeFromCollection(collectionId, recipeId)
-                            }
+                            viewModel.removeRecipeFromCollection(collectionId, recipeId)
                             showDeleteDialog = null
-                        }
+                        },
+                        enabled = !uiState.isLoading
                     ) {
-                        Text("Delete", color = Color.Red)
+                        Text("Remove", color = MaterialTheme.colorScheme.error)
                     }
                 },
                 dismissButton = {
-                    TextButton(onClick = { showDeleteDialog = null }) {
+                    TextButton(
+                        onClick = { showDeleteDialog = null },
+                        enabled = !uiState.isLoading
+                    ) {
                         Text("Cancel")
                     }
                 }

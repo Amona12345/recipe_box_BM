@@ -14,6 +14,8 @@ import com.example.recipebox.domain.usecase.collection.AddRecipeToCollectionUseC
 import com.example.recipebox.domain.usecase.collection.CollectionUseCases
 import com.example.recipebox.domain.usecase.collection.CreateCollectionUseCase
 import com.example.recipebox.domain.usecase.collection.DeleteCollectionUseCase
+import com.example.recipebox.domain.usecase.collection.GetCollectionWithRecipesFlow
+import com.example.recipebox.domain.usecase.collection.GetCollectionWithRecipesUseCase
 import com.example.recipebox.domain.usecase.collection.GetCollectionsUseCase
 import com.example.recipebox.domain.usecase.collection.GetCollectionsWithRecipesUseCase
 import com.example.recipebox.domain.usecase.collection.RemoveRecipeFromCollectionUseCase
@@ -28,35 +30,52 @@ import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 
-
 @Module
 @InstallIn(SingletonComponent::class)
 object UseCaseModule {
 
     @Provides
     @Singleton
-    fun provideRecipeUseCases(repository: RecipeRepository): RecipeUseCases {
+    fun provideRecipeUseCases(
+        addRecipe: AddRecipeUseCase,
+        getRecipes: GetRecipesUseCase,
+        searchRecipes: SearchRecipesUseCase,
+        getRecipeById: GetRecipeByIdUseCase,
+        deleteRecipe: DeleteRecipeUseCase,
+        updateRecipe: UpdateRecipeUseCase
+    ): RecipeUseCases {
         return RecipeUseCases(
-            addRecipe = AddRecipeUseCase(repository),
-            getRecipes = GetRecipesUseCase(repository),
-            searchRecipes = SearchRecipesUseCase(repository),
-            getRecipeById = GetRecipeByIdUseCase(repository),
-            deleteRecipe = DeleteRecipeUseCase(repository),
-            updateRecipe = UpdateRecipeUseCase(repository)
+            addRecipe = addRecipe,
+            getRecipes = getRecipes,
+            searchRecipes = searchRecipes,
+            getRecipeById = getRecipeById,
+            deleteRecipe = deleteRecipe,
+            updateRecipe = updateRecipe
         )
     }
-
     @Provides
     @Singleton
-    fun provideCollectionUseCases(repository: CollectionRepository): CollectionUseCases {
+    fun provideCollectionUseCases(
+        createCollection: CreateCollectionUseCase,
+        deleteCollection: DeleteCollectionUseCase,
+        updateCollection: UpdateCollectionUseCase,
+        getCollections: GetCollectionsUseCase,
+        getCollectionsWithRecipes: GetCollectionsWithRecipesUseCase,
+        getCollectionWithRecipes: GetCollectionWithRecipesUseCase,
+        addRecipeToCollection: AddRecipeToCollectionUseCase,
+        removeRecipeFromCollection: RemoveRecipeFromCollectionUseCase,
+        getCollectionWithRecipesFlow: GetCollectionWithRecipesFlow
+    ): CollectionUseCases {
         return CollectionUseCases(
-            createCollection = CreateCollectionUseCase(repository),
-            getCollections = GetCollectionsUseCase(repository),
-            getCollectionsWithRecipes = GetCollectionsWithRecipesUseCase(repository),
-            addRecipeToCollection = AddRecipeToCollectionUseCase(repository),
-            removeRecipeFromCollection = RemoveRecipeFromCollectionUseCase(repository),
-            deleteCollection = DeleteCollectionUseCase(repository),
-            updateCollection = UpdateCollectionUseCase(repository)
+            createCollection = createCollection,
+            deleteCollection = deleteCollection,
+            updateCollection = updateCollection,
+            getCollections = getCollections,
+            getCollectionsWithRecipes = getCollectionsWithRecipes,
+            getCollectionWithRecipes = getCollectionWithRecipes,
+            addRecipeToCollection = addRecipeToCollection,
+            removeRecipeFromCollection = removeRecipeFromCollection,
+            getCollectionWithRecipesFlow = getCollectionWithRecipesFlow
         )
     }
 
@@ -69,5 +88,5 @@ object UseCaseModule {
             getImageUri = GetImageUriUseCase(repository)
         )
     }
-}
 
+}

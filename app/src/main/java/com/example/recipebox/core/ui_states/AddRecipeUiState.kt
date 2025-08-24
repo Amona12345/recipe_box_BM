@@ -4,14 +4,15 @@ import com.example.recipebox.core.enums.DifficultyEnum
 import com.example.recipebox.domain.model.IngredientModel
 
 data class AddRecipeUiState(
+    val currentStep: Int = 0,
     val title: String = "",
     val description: String = "",
     val imageUri: String? = null,
     val localImagePath: String? = null,
-    val ingredients: List<IngredientModel> = listOf(IngredientModel("", "", "")),
+    val ingredients: List<IngredientModel> = listOf(IngredientModel("", "", "", "")),
     val steps: List<String> = listOf(""),
     val tags: List<String> = emptyList(),
-    val servings: Int = 4,
+    val servings: Int = 1,
     val prepTime: String = "",
     val cookTime: String = "",
     val difficulty: DifficultyEnum = DifficultyEnum.EASY,
@@ -22,6 +23,6 @@ data class AddRecipeUiState(
     val isLoading: Boolean = false,
     val isSaved: Boolean = false,
     val errorMessage: String? = null,
-    val currentStep: Int = 0,
-    val showImagePickerDialog: Boolean = false
+    val showImagePickerDialog: Boolean = false,
+    val targetCollectionId: Int? = null // Add this field
 )

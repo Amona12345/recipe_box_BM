@@ -1,31 +1,31 @@
 package com.example.recipebox.presentation.screens
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.recipebox.domain.model.CollectionModel
+import com.example.recipebox.presentation.items.collection.CollectionCard
 import com.example.recipebox.presentation.viewmodel.CollectionViewModel
+import compose.icons.FeatherIcons
+import compose.icons.feathericons.Bookmark
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CollectionsScreen(
     viewModel: CollectionViewModel = hiltViewModel(),
-    onCollectionClick: (Int) -> Unit
+    onCollectionClick: (Int) -> Unit = {}
 ) {
     val collections by viewModel.collections.collectAsState()
     val uiState by viewModel.uiState.collectAsState()
@@ -64,64 +64,57 @@ fun CollectionsScreen(
                 .padding(padding)
         ) {
             if (collections.isEmpty()) {
-                Text(
-                    "No collections yet. Add one!",
-                    style = MaterialTheme.typography.bodyLarge,
-                    modifier = Modifier.align(Alignment.Center)
-                )
+                // Empty state
+                Column(
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .padding(32.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Icon(
+                        imageVector = FeatherIcons.Bookmark,
+                        contentDescription = null,
+                        modifier = Modifier.size(80.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        "No collections yet",
+                        style = MaterialTheme.typography.headlineSmall,
+                        textAlign = TextAlign.Center
+                    )
+                    Text(
+                        "Create your first collection to organize your favorite recipes!",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(vertical = 8.dp)
+                    )
+                    Button(
+                        onClick = { showAddDialog = true },
+                        modifier = Modifier.padding(top = 16.dp)
+                    ) {
+                        Text("Create Collection")
+                    }
+                }
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
                     contentPadding = PaddingValues(16.dp)
                 ) {
                     items(collections) { collection ->
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { onCollectionClick(collection.id) },
-                            elevation = CardDefaults.cardElevation(6.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(16.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Text(
-                                    collection.name,
-                                    style = MaterialTheme.typography.titleMedium
-                                )
-
-                                Row {
-                                    IconButton(onClick = {
-                                        showEditDialog = true to collection
-                                    }) {
-                                        Icon(
-                                            Icons.Default.Edit,
-                                            contentDescription = "Edit",
-                                            tint = MaterialTheme.colorScheme.primary
-                                        )
-                                    }
-                                    IconButton(onClick = {
-                                        showDeleteDialog = true to collection
-                                    }) {
-                                        Icon(
-                                            Icons.Default.Delete,
-                                            contentDescription = "Delete",
-                                            tint = MaterialTheme.colorScheme.error
-                                        )
-                                    }
-                                }
-                            }
-                        }
+                        CollectionCard(
+                            collection = collection,
+                            onClick = { onCollectionClick(collection.id) },
+                            onEditClick = { showEditDialog = true to collection },
+                            onDeleteClick = { showDeleteDialog = true to collection }
+                        )
                     }
                 }
             }
         }
     }
-
 
     if (showAddDialog) {
         var text by remember { mutableStateOf("") }
@@ -132,25 +125,36 @@ fun CollectionsScreen(
                 OutlinedTextField(
                     value = text,
                     onValueChange = { text = it },
-                    label = { Text("Collection name") }
+                    label = { Text("Collection name") },
+                    singleLine = true
                 )
             },
             confirmButton = {
-                TextButton(onClick = {
-                    if (text.isNotBlank()) {
-                        scope.launch { viewModel.createCollection(text) }
-                        showAddDialog = false
-                    }
-                }) { Text("Add") }
+                TextButton(
+                    onClick = {
+                        if (text.isNotBlank()) {
+                            scope.launch {
+                                viewModel.createCollection(text.trim())
+                                showAddDialog = false
+                                text = ""
+                            }
+                        }
+                    },
+                    enabled = text.isNotBlank()
+                ) {
+                    Text("Add")
+                }
             },
             dismissButton = {
-                TextButton(onClick = { showAddDialog = false }) {
+                TextButton(onClick = {
+                    showAddDialog = false
+                    text = ""
+                }) {
                     Text("Cancel")
                 }
             }
         )
     }
-
 
     if (showEditDialog.first) {
         var text by remember { mutableStateOf(showEditDialog.second?.name ?: "") }
@@ -161,20 +165,26 @@ fun CollectionsScreen(
                 OutlinedTextField(
                     value = text,
                     onValueChange = { text = it },
-                    label = { Text("Collection name") }
+                    label = { Text("Collection name") },
+                    singleLine = true
                 )
             },
             confirmButton = {
-                TextButton(onClick = {
-                    if (text.isNotBlank()) {
-                        scope.launch {
-                            showEditDialog.second?.let {
-                                viewModel.updateCollection(it.copy(name = text))
+                TextButton(
+                    onClick = {
+                        if (text.isNotBlank()) {
+                            scope.launch {
+                                showEditDialog.second?.let {
+                                    viewModel.updateCollection(it.copy(name = text.trim()))
+                                }
+                                showEditDialog = false to null
                             }
                         }
-                        showEditDialog = false to null
-                    }
-                }) { Text("Save") }
+                    },
+                    enabled = text.isNotBlank()
+                ) {
+                    Text("Save")
+                }
             },
             dismissButton = {
                 TextButton(onClick = { showEditDialog = false to null }) {
@@ -184,17 +194,20 @@ fun CollectionsScreen(
         )
     }
 
-
     if (showDeleteDialog.first) {
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false to null },
             title = { Text("Delete Collection") },
-            text = { Text("Are you sure you want to delete this collection?") },
+            text = { Text("Are you sure you want to delete this collection? This action cannot be undone.") },
             confirmButton = {
                 TextButton(onClick = {
-                    showDeleteDialog.second?.let { viewModel.deleteCollection(it.id) }
+                    showDeleteDialog.second?.let {
+                        viewModel.deleteCollection(it.id)
+                    }
                     showDeleteDialog = false to null
-                }) { Text("Delete", color = MaterialTheme.colorScheme.error) }
+                }) {
+                    Text("Delete", color = MaterialTheme.colorScheme.error)
+                }
             },
             dismissButton = {
                 TextButton(onClick = { showDeleteDialog = false to null }) {
