@@ -1,0 +1,15 @@
+package com.example.recipebox.domain.usecase.collection
+
+import com.example.recipebox.domain.model.CollectionWithRecipesModel
+import com.example.recipebox.domain.repository.CollectionRepository
+import javax.inject.Inject
+import javax.inject.Singleton
+
+
+@Singleton
+class GetCollectionWithRecipesUseCase @Inject constructor(
+    private val repository: CollectionRepository
+) {
+    suspend operator fun invoke(collectionId: Int): CollectionWithRecipesModel? =
+        repository.getCollectionWithRecipes(collectionId)
+}

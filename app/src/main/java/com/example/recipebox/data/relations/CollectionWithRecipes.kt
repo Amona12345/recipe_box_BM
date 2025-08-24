@@ -13,7 +13,7 @@ data class CollectionWithRecipes(
         parentColumn = "id",
         entityColumn = "id",
         associateBy = Junction(
-            value = CollectionRecipeCrossRef::class,
+            CollectionRecipeCrossRef::class,
             parentColumn = "collectionId",
             entityColumn = "recipeId"
         )

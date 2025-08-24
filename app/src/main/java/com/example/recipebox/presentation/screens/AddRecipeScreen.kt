@@ -48,11 +48,18 @@ import com.example.recipebox.presentation.viewmodel.AddRecipeViewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddRecipeScreen(
-    viewModel: AddRecipeViewModel = hiltViewModel(),
-    onNavigateBack: () -> Unit = {},
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    collectionId: Int? = null, // Optional collection ID
+    onNavigateBack: () -> Unit,
+    viewModel: AddRecipeViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+
+    LaunchedEffect(collectionId) {
+        collectionId?.let { id ->
+            viewModel.setTargetCollectionId(id)
+        }
+    }
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
 
@@ -136,7 +143,6 @@ fun AddRecipeScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
                 .background(Color(0xFF5A67D8))
         ) {
             StepIndicator(

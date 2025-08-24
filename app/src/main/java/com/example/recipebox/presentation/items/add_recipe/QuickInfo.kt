@@ -29,7 +29,7 @@ import compose.icons.feathericons.Zap
 
 @Composable
 fun QuickInfoRow(
-    servings: Int,
+    servings: Int?,
     prepTime: String,
     cookTime: String,
     calories: String,
